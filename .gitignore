@@ -1,0 +1,20 @@
+# Dependencies
+node_modules/
+
+# Build
+.next/
+out/
+
+# Environment
+.env
+.env.local
+.env.production
+
+# Prisma
+prisma/migrations/
+prisma/*.db
+
+# Misc
+.DS_Store
+*.log
+npm-debug.log*
