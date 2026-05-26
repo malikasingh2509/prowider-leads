@@ -1,11 +1,30 @@
 import { PrismaClient } from '@prisma/client'
+import { PrismaPg } from '@prisma/adapter-pg'
+import { Pool } from 'pg'
+import * as fs from 'fs'
+import * as path from 'path'
 
-const prisma = new PrismaClient()
+// Manually load .env for the seed script
+const envPath = path.resolve(process.cwd(), '.env')
+if (fs.existsSync(envPath)) {
+  const lines = fs.readFileSync(envPath, 'utf-8').split('\n')
+  for (const line of lines) {
+    const match = line.match(/^([^=]+)=(.*)$/)
+    if (match) {
+      const key = match[1].trim()
+      const val = match[2].trim().replace(/^"|"$/g, '')
+      process.env[key] = val
+    }
+  }
+}
+
+const pool = new Pool({ connectionString: process.env.DATABASE_URL! })
+const adapter = new PrismaPg(pool)
+const prisma = new PrismaClient({ adapter } as any)
 
 async function main() {
   console.log('🌱 Seeding database...')
 
-  // Create Services
   const service1 = await prisma.service.upsert({
     where: { name: 'Service 1' },
     update: {},
@@ -24,7 +43,6 @@ async function main() {
 
   console.log('✅ Services created')
 
-  // Create 8 Providers
   for (let i = 1; i <= 8; i++) {
     await prisma.provider.upsert({
       where: { name: `Provider ${i}` },
@@ -35,7 +53,6 @@ async function main() {
 
   console.log('✅ Providers created')
 
-  // Create AllocationState for each service (tracks round-robin position)
   for (const service of [service1, service2, service3]) {
     await prisma.allocationState.upsert({
       where: { serviceId: service.id },
@@ -55,4 +72,5 @@ main()
   })
   .finally(async () => {
     await prisma.$disconnect()
+    await pool.end()
   })
